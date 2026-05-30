@@ -8,6 +8,7 @@ import wave
 import subprocess
 from pathlib import Path
 
+import keyring
 import rumps
 import sounddevice as sd
 import numpy as np
@@ -20,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 VOICE_ID = os.getenv("ELEVEN_VOICE_ID", "gj74dvtipVOXMFculyU6")
-ELEVEN_KEY = os.getenv("ELEVEN_API_KEY")
+ELEVEN_KEY = keyring.get_password("flinch", "eleven_api_key") or os.getenv("ELEVEN_API_KEY")
 LOG_DIR = Path(os.path.expanduser(
     os.getenv("FLINCH_LOG_DIR", "~/Documents/obsidian/tyler/flinch")
 ))

@@ -55,10 +55,17 @@ A duck appears in your menu bar. You are done.
 
 ---
 
-## .env
+## Keys and config
+
+ElevenLabs API key goes in macOS Keychain, not in `.env`:
+
+```bash
+python -c "import keyring; keyring.set_password('flinch', 'eleven_api_key', 'your_key')"
+```
+
+Everything else goes in `.env`:
 
 ```
-ELEVEN_API_KEY=your_key_here
 ELEVEN_VOICE_ID=gj74dvtipVOXMFculyU6
 
 FLINCH_LOG_DIR=~/Documents/obsidian/tyler/flinch
