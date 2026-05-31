@@ -12,11 +12,12 @@
 
 ## Pending (not started)
 
-- [ ] Test end-to-end: grant accessibility, press ⌥/, confirm response plays and logs
-- [ ] Verify ⌥/ hotkey fires correctly (pynput vk=44 + alt modifier)
-- [ ] Set up launch agent so FLINCH starts on login (removes Terminal dependency)
-- [ ] Add `flinch` alias to `~/.zshrc` as interim run command
-- [ ] Re-grant accessibility permission to launch agent process (after launch agent set up)
+- [x] Test end-to-end: confirmed working (2026-05-31)
+- [x] Hotkey working — switched from pynput to NSEvent global monitor, trigger is right ⌘ hold-to-record
+- [x] LLM switched to OpenAI gpt-4o-mini (key from macOS Keychain: service=OPENAI_API_KEY, account=mars)
+- [x] Launch agent created at `~/Library/LaunchAgents/com.aditya.flinch.plist` (2026-05-31)
+- [ ] ~~Add `flinch` alias~~ — not needed, launch agent handles startup
+- [ ] Fix Keychain permission prompts — macOS prompts on launch agent startup; solution is "Always Allow" in Keychain Access or grant ACL to venv Python binary
 
 ## Run command (current)
 
@@ -33,4 +34,7 @@ python /Users/aditya/Documents/Projects/flinch/flinch.py
 - keep_alive: default 5 min — user talks back-to-back, unloading between turns kills flow
 - Log is for user only — duck stays stateless, no cross-session memory fed to LLM
 - ElevenLabs key in macOS Keychain, not `.env`
+- OpenAI key in macOS Keychain: service=`OPENAI_API_KEY`, account=`mars` — default LLM is gpt-4o-mini
+- Hotkey changed from ⌥/ (pynput, broken on macOS) to right ⌘ via NSEvent global monitor
+- Menu icon changed from 🦆 to ⚡; dock icon hidden via `NSApplicationActivationPolicyAccessory`
 - Venv in `/Users/aditya/venvs/flinch` (consistent with all other venvs)
