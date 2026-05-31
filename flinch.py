@@ -15,18 +15,19 @@ import numpy as np
 from faster_whisper import WhisperModel
 import ollama
 from elevenlabs.client import ElevenLabs
-from pynput import keyboard
+from AppKit import NSEvent, NSApp, NSApplicationActivationPolicyAccessory
 from dotenv import load_dotenv
 
 load_dotenv()
 
 VOICE_ID = os.getenv("ELEVEN_VOICE_ID", "gj74dvtipVOXMFculyU6")
 ELEVEN_KEY = keyring.get_password("flinch", "eleven_api_key") or os.getenv("ELEVEN_API_KEY")
+OPENAI_KEY = keyring.get_password("OPENAI_API_KEY", "mars") or os.getenv("OPENAI_API_KEY")
 LOG_DIR = Path(os.path.expanduser(
     os.getenv("FLINCH_LOG_DIR", "~/Documents/obsidian/tyler/flinch")
 ))
 SAMPLE_RATE = 16000
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
@@ -47,6 +48,15 @@ _whisper_model = None
 _eleven_client = ElevenLabs(api_key=ELEVEN_KEY)
 
 
+def _ensure_ollama():
+    try:
+        ollama.list()
+    except Exception:
+        subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        import time
+        time.sleep(2)
+
+
 def _get_whisper() -> WhisperModel:
     global _whisper_model
     if _whisper_model is None:
@@ -57,7 +67,7 @@ def _get_whisper() -> WhisperModel:
 def _ask_llm(transcript: str) -> str:
     if LLM_PROVIDER == "openai":
         from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=OPENAI_KEY)
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
@@ -102,32 +112,34 @@ def _log(transcript: str, question: str):
 
 class FlinchApp(rumps.App):
     def __init__(self):
-        super().__init__("🦆", quit_button="Quit FLINCH")
+        super().__init__("⚡", quit_button="Quit FLINCH")
+        NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
         self.recording = False
         self.frames = []
         self.stream = None
-        self._alt_held = False
+        _ensure_ollama()
         self._start_hotkey_listener()
 
     def _start_hotkey_listener(self):
-        def on_press(key):
-            if key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
-                self._alt_held = True
-            elif self._alt_held and not self.recording:
-                vk = getattr(key, "vk", None)
-                char = getattr(key, "char", None)
-                if vk == 44 or char in ("/", "÷"):
-                    self._start_recording()
+        # Right Command = keyCode 54, Right Shift = keyCode 60
+        # NSFlagsChangedMask = 1 << 12; NSCommandKeyMask = 1 << 20
+        TRIGGER_KEYCODE = 54
+        NSFlagsChangedMask = 1 << 12
+        NSCommandKeyMask = 1 << 20
 
-        def on_release(key):
-            if key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
-                self._alt_held = False
+        def handler(event):
+            if event.keyCode() != TRIGGER_KEYCODE:
+                return
+            if event.modifierFlags() & NSCommandKeyMask:
+                if not self.recording:
+                    self._start_recording()
+            else:
                 if self.recording:
                     self._stop_and_process()
 
-        listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-        listener.daemon = True
-        listener.start()
+        self._monitor = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
+            NSFlagsChangedMask, handler
+        )
 
     def _audio_callback(self, indata, frames_count, time_info, status):
         self.frames.append(indata.copy())
@@ -181,7 +193,7 @@ class FlinchApp(rumps.App):
         except Exception as e:
             print(f"flinch error: {e}")
         finally:
-            self.title = "🦆"
+            self.title = "⚡"
 
 
 if __name__ == "__main__":
